@@ -8,7 +8,7 @@ import java.util.UUID;
 
 @Getter
 @SuperBuilder
-public class BaseDomainEvent {
+public abstract class BaseDomainEvent {
     private final UUID eventId;
     private final UUID aggregateId;
     private final Instant occurredAT;
