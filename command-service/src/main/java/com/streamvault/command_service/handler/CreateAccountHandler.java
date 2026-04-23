@@ -47,7 +47,7 @@ public class CreateAccountHandler {
         AccountCreated event = AccountCreated.builder()
                 .eventId(UUID.randomUUID())
                 .aggregateId(account.getId())
-                .occurredAT(Instant.now())
+                .occurredAt(Instant.now())
                 .version(1L)
                 .correlationId(command.correlationId())
                 .ownerId(account.getOwnerId())

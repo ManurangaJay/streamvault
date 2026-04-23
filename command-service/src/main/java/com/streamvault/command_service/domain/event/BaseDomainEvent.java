@@ -11,7 +11,7 @@ import java.util.UUID;
 public abstract class BaseDomainEvent {
     private final UUID eventId;
     private final UUID aggregateId;
-    private final Instant occurredAT;
+    private final Instant occurredAt;
     private final Long version;
     private final UUID correlationId;
 }
