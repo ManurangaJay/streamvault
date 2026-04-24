@@ -9,6 +9,8 @@ import java.util.UUID;
 @Getter
 @SuperBuilder
 public class MoneyTransferred extends BaseDomainEvent {
-    private final UUID targetAccount;
+    private final UUID sourceAccountId;
+    private final UUID targetAccountId;
     private final BigDecimal amount;
+    private final String description;
 }
