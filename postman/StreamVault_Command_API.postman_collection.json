@@ -1,0 +1,182 @@
+{
+  "info": {
+    "name": "StreamVault Command API",
+    "description": "CQRS Command endpoints for the StreamVault Event Sourced Ledger.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Authentication",
+      "item": [
+        {
+          "name": "Register User",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"fullName\": \"Test User\",\n    \"email\": \"test@streamvault.com\",\n    \"password\": \"securepassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "auth", "register" ]
+            }
+          }
+        },
+        {
+          "name": "Login User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.token) {",
+                  "    pm.collectionVariables.set(\"jwt_token\", jsonData.token);",
+                  "    console.log(\"JWT Token automatically set!\");",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"test@streamvault.com\",\n    \"password\": \"securepassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "auth", "login" ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Account Commands",
+      "item": [
+        {
+          "name": "Create Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"ownerId\": \"REPLACE_WITH_USER_UUID\",\n    \"accountType\": \"SAVINGS\",\n    \"currency\": \"USD\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "accounts" ]
+            }
+          }
+        },
+        {
+          "name": "Deposit Money",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"accountId\": \"REPLACE_WITH_ACCOUNT_UUID\",\n    \"amount\": 1500.00,\n    \"description\": \"Initial Salary Deposit\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/deposit",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "accounts", "deposit" ]
+            }
+          }
+        },
+        {
+          "name": "Withdraw Money",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"accountId\": \"REPLACE_WITH_ACCOUNT_UUID\",\n    \"amount\": 200.00,\n    \"description\": \"ATM Withdrawal\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/withdraw",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "accounts", "withdraw" ]
+            }
+          }
+        },
+        {
+          "name": "Transfer Money",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"sourceAccountId\": \"REPLACE_WITH_SOURCE_UUID\",\n    \"targetAccountId\": \"REPLACE_WITH_TARGET_UUID\",\n    \"amount\": 150.00,\n    \"description\": \"Rent Payment\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/transfer",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "accounts", "transfer" ]
+            }
+          }
+        },
+        {
+          "name": "Close Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"accountId\": \"REPLACE_WITH_ACCOUNT_UUID\",\n    \"reason\": \"No longer needed\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/close",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "accounts", "close" ]
+            }
+          }
+        }
+      ],
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{jwt_token}}",
+            "type": "string"
+          }
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "jwt_token",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}
