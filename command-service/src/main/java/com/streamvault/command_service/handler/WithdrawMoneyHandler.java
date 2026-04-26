@@ -79,5 +79,8 @@ public class WithdrawMoneyHandler {
                 .eventVersion(event.getVersion())
                 .correlationId(event.getCorrelationId())
                 .build();
+
+        domainEventRepository.save(eventRecord);
+        streamBridge.send("transactionEvents-out-0", event);
     }
 }

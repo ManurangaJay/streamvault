@@ -51,18 +51,23 @@ public class CloseAccountHandler {
             switch (record.getEventType()) {
                 case "MoneyDeposited":
                     currentBalance = currentBalance.add(eventAmount);
+                    break;
                 case "MoneyWithdrawn":
                     currentBalance = currentBalance.subtract(eventAmount);
+                    break;
                 case "MoneyTransferred":
-                    UUID eventSourceId = UUID.fromString(record.getEventData().get("sourceAccountId").asText());
-                    if (account.getId().equals(eventSourceId)) {
-                        currentBalance = currentBalance.subtract(eventAmount);
-                    } else {
-                        currentBalance = currentBalance.add(eventAmount);
+                    if (record.getEventData().has("sourceAccountId") && !record.getEventData().get("sourceAccountId").isNull()) {
+                        UUID eventSourceId = UUID.fromString(record.getEventData().get("sourceAccountId").asText());
+                        if (account.getId().equals(eventSourceId)) {
+                            currentBalance = currentBalance.subtract(eventAmount);
+                        } else {
+                            currentBalance = currentBalance.add(eventAmount);
+                        }
                     }
                     break;
             }
         }
+        
         if (currentBalance.compareTo(BigDecimal.ZERO) != 0) {
             throw new IllegalStateException("Account cannot be closed because it has a non-zero balance: " + currentBalance);
         }
