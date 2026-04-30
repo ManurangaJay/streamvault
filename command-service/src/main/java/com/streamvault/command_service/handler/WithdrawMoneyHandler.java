@@ -4,18 +4,25 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.streamvault.command_service.domain.aggregate.Account;
 import com.streamvault.command_service.domain.command.WithdrawMoneyCommand;
 import com.streamvault.command_service.domain.entity.DomainEventRecord;
+import com.streamvault.command_service.domain.entity.User;
 import com.streamvault.command_service.domain.event.MoneyWithdrawn;
 import com.streamvault.command_service.repository.AccountRepository;
 import com.streamvault.command_service.repository.DomainEventRepository;
+import com.streamvault.command_service.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.stream.function.StreamBridge;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class WithdrawMoneyHandler {
@@ -24,10 +31,20 @@ public class WithdrawMoneyHandler {
     private final DomainEventRepository domainEventRepository;
     private final StreamBridge streamBridge;
     private final ObjectMapper objectMapper;
+    private final UserRepository userRepository;
 
     public void handle(WithdrawMoneyCommand command) {
         Account account = accountRepository.findById(command.accountId())
                 .orElseThrow(() -> new IllegalArgumentException("Account not found with ID: " + command.accountId()));
+
+        String currentUserEmail = (String) Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getPrincipal();
+
+        User currentUser = userRepository.findByEmail(currentUserEmail)
+                .orElseThrow(() -> new IllegalStateException("Authenticated user not found in the database"));
+
+        if (!account.getOwnerId().equals(currentUser.getId())) {
+            throw new AccessDeniedException("You are not authorized to withdraw from this account");
+        }
 
         if (!account.isActive()) {
             throw new IllegalArgumentException("Cannot withdraw from an inactive or closed account.");

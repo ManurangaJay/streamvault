@@ -4,18 +4,23 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.streamvault.command_service.domain.aggregate.Account;
 import com.streamvault.command_service.domain.command.CloseAccountCommand;
 import com.streamvault.command_service.domain.entity.DomainEventRecord;
+import com.streamvault.command_service.domain.entity.User;
 import com.streamvault.command_service.domain.enums.AccountStatus;
 import com.streamvault.command_service.domain.event.AccountClosed;
 import com.streamvault.command_service.repository.AccountRepository;
 import com.streamvault.command_service.repository.DomainEventRepository;
+import com.streamvault.command_service.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cloud.stream.function.StreamBridge;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -26,6 +31,7 @@ public class CloseAccountHandler {
     private final DomainEventRepository domainEventRepository;
     private final StreamBridge streamBridge;
     private final ObjectMapper objectMapper;
+    private final UserRepository userRepository;
 
     @Transactional
     public void handle(CloseAccountCommand command) {
@@ -34,6 +40,15 @@ public class CloseAccountHandler {
 
         if (!account.isActive()) {
             throw new IllegalStateException("Account is already closed or suspended.");
+        }
+
+        String currentUserEmail = (String) Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getPrincipal();
+
+        User currentUser = userRepository.findByEmail(currentUserEmail)
+                .orElseThrow(() -> new IllegalStateException("Authenticated user not found in database."));
+
+        if (!account.getOwnerId().equals(currentUser.getId())) {
+            throw new AccessDeniedException("You are not authenticated to close this account.");
         }
 
         List<DomainEventRecord> eventStream = domainEventRepository.findByAggregateIdOrderByEventVersionAsc(account.getId());

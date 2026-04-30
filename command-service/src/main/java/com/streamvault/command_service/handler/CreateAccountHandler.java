@@ -12,10 +12,13 @@ import com.streamvault.command_service.repository.DomainEventRepository;
 import com.streamvault.command_service.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cloud.stream.function.StreamBridge;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -33,6 +36,15 @@ public class CreateAccountHandler {
 
         User owner = userRepository.findById(command.ownerId())
                 .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + command.ownerId()));
+
+        String currentUserEmail = (String) Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getPrincipal();
+
+        User currentUser = userRepository.findByEmail(currentUserEmail)
+                .orElseThrow(() -> new IllegalStateException("Authenticated user not found in database."));
+
+        if (!owner.getId().equals(currentUser.getId())) {
+            throw new AccessDeniedException("You are not authorized to create account for this user");
+        }
 
         Account account = Account.builder()
                 .id(UUID.randomUUID())

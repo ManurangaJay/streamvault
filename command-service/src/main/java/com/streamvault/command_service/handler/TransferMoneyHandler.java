@@ -4,18 +4,22 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.streamvault.command_service.domain.aggregate.Account;
 import com.streamvault.command_service.domain.command.TransferMoneyCommand;
 import com.streamvault.command_service.domain.entity.DomainEventRecord;
+import com.streamvault.command_service.domain.entity.User;
 import com.streamvault.command_service.domain.event.MoneyTransferred;
 import com.streamvault.command_service.repository.AccountRepository;
 import com.streamvault.command_service.repository.DomainEventRepository;
-import jdk.dynalink.linker.LinkerServices;
+import com.streamvault.command_service.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cloud.stream.function.StreamBridge;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -26,6 +30,7 @@ public class TransferMoneyHandler {
     private final DomainEventRepository domainEventRepository;
     private final StreamBridge streamBridge;
     private final ObjectMapper objectMapper;
+    private final UserRepository userRepository;
 
     @Transactional
     public void handle(TransferMoneyCommand command) {
@@ -37,6 +42,15 @@ public class TransferMoneyHandler {
                 .orElseThrow(() -> new IllegalArgumentException("Source account not found"));
         Account targetAccount = accountRepository.findById(command.targetAccountId())
                 .orElseThrow(() -> new IllegalArgumentException("Target account not found"));
+
+        String currentUserEmail = (String) Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getPrincipal();
+
+        User currentUser = userRepository.findByEmail(currentUserEmail)
+                .orElseThrow(() -> new IllegalStateException("Authenticated user not found in database"));
+
+        if (!currentUser.getId().equals(sourceAccount.getOwnerId())) {
+            throw new AccessDeniedException("You are not authorized to transfer from this account");
+        }
 
         if (!sourceAccount.isActive() || !targetAccount.isActive()) {
             throw new IllegalArgumentException("Both accounts must be active to perform a transfer");
