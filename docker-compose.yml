@@ -1,3 +1,6 @@
+include:
+  - docker-compose.infra.yml
+
 services:
   command-service:
     build:
