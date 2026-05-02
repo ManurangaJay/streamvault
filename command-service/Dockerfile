@@ -10,6 +10,9 @@ RUN mvn clean package -DskipTests
 # Run stage
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
+# Create a non-root user and group
+RUN addgroup -S spring && adduser -S spring -G spring
+USER spring:spring
 # Copy the built jar from the builder stage
 COPY --from=builder /app/target/*.jar app.jar
 # Expose the application port
