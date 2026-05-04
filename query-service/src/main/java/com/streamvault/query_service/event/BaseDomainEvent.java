@@ -1,6 +1,7 @@
 package com.streamvault.query_service.event;
 
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
@@ -9,11 +10,10 @@ import java.util.UUID;
 
 @Getter
 @Setter
-@SuperBuilder
 public abstract class BaseDomainEvent {
-    private final UUID eventId;
-    private final UUID aggregateId;
-    private final Instant occurredAt;
-    private final Long version;
-    private final UUID correlationId;
+    private UUID eventId;
+    private UUID aggregateId;
+    private Instant occurredAt;
+    private Long version;
+    private UUID correlationId;
 }
