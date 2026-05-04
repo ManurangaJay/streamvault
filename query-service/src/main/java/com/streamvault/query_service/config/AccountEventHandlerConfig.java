@@ -3,8 +3,10 @@ package com.streamvault.query_service.config;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.streamvault.query_service.domain.AccountProjection;
+import com.streamvault.query_service.event.AccountClosed;
 import com.streamvault.query_service.event.AccountCreated;
 import com.streamvault.query_service.repository.AccountProjectionRepository;
+import com.streamvault.query_service.service.ProjectionUpdaterService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
@@ -27,6 +29,7 @@ public class AccountEventHandlerConfig {
     private final AccountProjectionRepository repository;
     private final RedisTemplate<String, Object> redisTemplate;
     private final ObjectMapper objectMapper;
+    private final ProjectionUpdaterService projectionUpdaterService;
 
     @Bean
     public Consumer<Message<String>> accountEvents() {
@@ -64,6 +67,9 @@ public class AccountEventHandlerConfig {
 
                   redisTemplate.opsForValue().set(redisKey, balanceCache);
                   log.info("Redis cache initialized at {} for account: {}", redisKey, event.getAggregateId());
+              } else if ("AccountClosed".equals(eventType)) {
+                  AccountClosed event = objectMapper.readValue(payload, AccountClosed.class);
+                  projectionUpdaterService.processAccountClosed(event);
               }
 
               Acknowledgment ack = message.getHeaders().get(KafkaHeaders.ACKNOWLEDGMENT, Acknowledgment.class);

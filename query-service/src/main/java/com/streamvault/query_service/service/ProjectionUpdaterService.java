@@ -2,6 +2,7 @@ package com.streamvault.query_service.service;
 
 import com.streamvault.query_service.domain.AccountProjection;
 import com.streamvault.query_service.domain.TransactionProjection;
+import com.streamvault.query_service.event.AccountClosed;
 import com.streamvault.query_service.event.MoneyDeposited;
 import com.streamvault.query_service.event.MoneyTransferred;
 import com.streamvault.query_service.event.MoneyWithdrawn;
@@ -186,5 +187,25 @@ public class ProjectionUpdaterService {
         ));
 
         log.info("Successfully projected MoneyTransferred. Source {}. Target {}", sourceAccountId, targetAccountId);
+    }
+
+    @Transactional
+    public void processAccountClosed(AccountClosed event) {
+        UUID accountId = event.getAggregateId();
+
+        AccountProjection account = accountProjectionRepository.findById(accountId).orElseThrow(
+                () -> new IllegalStateException("Account projection not found for ID: " + accountId)
+        );
+
+        account.setStatus("CLOSED");
+        account.setLastUpdatedAt(event.getOccurredAt());
+
+        accountProjectionRepository.save(account);
+
+        String redisKey = "balance::" + accountId;
+
+        redisTemplate.delete(redisKey);
+
+        log.info("Successfully projected AccountClosed for account {}. Cache evicted.", accountId);
     }
 }
