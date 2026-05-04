@@ -3,6 +3,7 @@ package com.streamvault.query_service.config;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.streamvault.query_service.event.MoneyDeposited;
+import com.streamvault.query_service.event.MoneyTransferred;
 import com.streamvault.query_service.event.MoneyWithdrawn;
 import com.streamvault.query_service.service.ProjectionUpdaterService;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +38,9 @@ public class TransactionEventHandlerConfig {
                 } else if ("MoneyWithdrawn".equals(eventType)) {
                     MoneyWithdrawn event = objectMapper.readValue(payload, MoneyWithdrawn.class);
                     projectionUpdaterService.processMoneyWithdrawn(event);
+                } else if ("MoneyTransferred".equals(eventType)) {
+                    MoneyTransferred event = objectMapper.readValue(payload, MoneyTransferred.class);
+                    projectionUpdaterService.processMoneyTransferred(event);
                 }
 
                 Acknowledgment acknowledgment = message.getHeaders().get(KafkaHeaders.ACKNOWLEDGMENT, Acknowledgment.class);
@@ -46,7 +50,6 @@ public class TransactionEventHandlerConfig {
             } catch (Exception e) {
                 log.error("Failed to process transaction event. Offset not committed.", e);
             }
-
         };
     }
 }
