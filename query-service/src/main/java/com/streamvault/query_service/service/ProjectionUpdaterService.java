@@ -1,12 +1,14 @@
 package com.streamvault.query_service.service;
 
 import com.streamvault.query_service.domain.AccountProjection;
+import com.streamvault.query_service.domain.ProcessedEvent;
 import com.streamvault.query_service.domain.TransactionProjection;
 import com.streamvault.query_service.event.AccountClosed;
 import com.streamvault.query_service.event.MoneyDeposited;
 import com.streamvault.query_service.event.MoneyTransferred;
 import com.streamvault.query_service.event.MoneyWithdrawn;
 import com.streamvault.query_service.repository.AccountProjectionRepository;
+import com.streamvault.query_service.repository.ProcessedEventRepository;
 import com.streamvault.query_service.repository.TransactionProjectionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -27,9 +30,15 @@ public class ProjectionUpdaterService {
     private final AccountProjectionRepository accountProjectionRepository;
     private final TransactionProjectionRepository transactionProjectionRepository;
     private final RedisTemplate<String, Object> redisTemplate;
+    private final ProcessedEventRepository processedEventRepository;
 
     @Transactional
     public void processMoneyDeposited(MoneyDeposited event) {
+
+        if (processedEventRepository.existsById(event.getEventId())) {
+            log.warn("Idempotency triggered: MoneyDeposited event {} already processed. Skipping.", event.getEventId());
+        }
+
         UUID accountId = event.getAggregateId();
 
         AccountProjection account = accountProjectionRepository.findById(accountId)
@@ -57,6 +66,8 @@ public class ProjectionUpdaterService {
 
         transactionProjectionRepository.save(transaction);
 
+        processedEventRepository.save(new ProcessedEvent(event.getEventId(), Instant.now()));
+
         String redisKey = "balance::" + accountId;
         Map<String, Object> balanceCache = Map.of(
                 "balance", newBalance,
@@ -69,6 +80,11 @@ public class ProjectionUpdaterService {
 
     @Transactional
     public void processMoneyWithdrawn(MoneyWithdrawn event) {
+
+        if (processedEventRepository.existsById(event.getEventId())) {
+            log.warn("Idempotency triggered: MoneyWithdrawn event {} already processed. Skipping.", event.getEventId());
+        }
+
         UUID accountId = event.getAggregateId();
 
         AccountProjection account = accountProjectionRepository.findById(accountId)
@@ -101,6 +117,8 @@ public class ProjectionUpdaterService {
 
         transactionProjectionRepository.save(transaction);
 
+        processedEventRepository.save(new ProcessedEvent(event.getEventId(), Instant.now()));
+
         String redisKey = "balance::" + accountId;
         Map<String, Object> balanceCache = Map.of(
                 "balance", newBalance,
@@ -114,6 +132,11 @@ public class ProjectionUpdaterService {
 
     @Transactional
     public void processMoneyTransferred(MoneyTransferred event) {
+
+        if (processedEventRepository.existsById(event.getEventId())) {
+            log.warn("Idempotency triggered: MoneyTransferred event {} already processed. Skipping.", event.getEventId());
+        }
+
         UUID sourceAccountId = event.getAggregateId();
         UUID targetAccountId = event.getTargetAccountId();
 
@@ -167,6 +190,8 @@ public class ProjectionUpdaterService {
 
         transactionProjectionRepository.saveAll(List.of(sourceTx, targetTx));
 
+        processedEventRepository.save(new ProcessedEvent(event.getEventId(), Instant.now()));
+
         String sourceRedisKey = "balance:: " + sourceAccountId;
         String targetRedisKey = "balance:: " + targetAccountId;
 
@@ -191,6 +216,11 @@ public class ProjectionUpdaterService {
 
     @Transactional
     public void processAccountClosed(AccountClosed event) {
+
+        if (processedEventRepository.existsById(event.getEventId())) {
+            log.warn("Idempotency triggered: AccountClosed event {} already processed. Skipping.", event.getEventId());
+        }
+
         UUID accountId = event.getAggregateId();
 
         AccountProjection account = accountProjectionRepository.findById(accountId).orElseThrow(
@@ -201,6 +231,8 @@ public class ProjectionUpdaterService {
         account.setLastUpdatedAt(event.getOccurredAt());
 
         accountProjectionRepository.save(account);
+
+        processedEventRepository.save(new ProcessedEvent(event.getEventId(), Instant.now()));
 
         String redisKey = "balance::" + accountId;
 
