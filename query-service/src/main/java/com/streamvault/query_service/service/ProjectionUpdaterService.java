@@ -3,10 +3,7 @@ package com.streamvault.query_service.service;
 import com.streamvault.query_service.domain.AccountProjection;
 import com.streamvault.query_service.domain.ProcessedEvent;
 import com.streamvault.query_service.domain.TransactionProjection;
-import com.streamvault.query_service.event.AccountClosed;
-import com.streamvault.query_service.event.MoneyDeposited;
-import com.streamvault.query_service.event.MoneyTransferred;
-import com.streamvault.query_service.event.MoneyWithdrawn;
+import com.streamvault.query_service.event.*;
 import com.streamvault.query_service.repository.AccountProjectionRepository;
 import com.streamvault.query_service.repository.ProcessedEventRepository;
 import com.streamvault.query_service.repository.TransactionProjectionRepository;
@@ -37,6 +34,7 @@ public class ProjectionUpdaterService {
 
         if (processedEventRepository.existsById(event.getEventId())) {
             log.warn("Idempotency triggered: MoneyDeposited event {} already processed. Skipping.", event.getEventId());
+            return;
         }
 
         UUID accountId = event.getAggregateId();
@@ -83,6 +81,7 @@ public class ProjectionUpdaterService {
 
         if (processedEventRepository.existsById(event.getEventId())) {
             log.warn("Idempotency triggered: MoneyWithdrawn event {} already processed. Skipping.", event.getEventId());
+            return;
         }
 
         UUID accountId = event.getAggregateId();
@@ -135,6 +134,7 @@ public class ProjectionUpdaterService {
 
         if (processedEventRepository.existsById(event.getEventId())) {
             log.warn("Idempotency triggered: MoneyTransferred event {} already processed. Skipping.", event.getEventId());
+            return;
         }
 
         UUID sourceAccountId = event.getAggregateId();
@@ -192,8 +192,8 @@ public class ProjectionUpdaterService {
 
         processedEventRepository.save(new ProcessedEvent(event.getEventId(), Instant.now()));
 
-        String sourceRedisKey = "balance:: " + sourceAccountId;
-        String targetRedisKey = "balance:: " + targetAccountId;
+        String sourceRedisKey = "balance::" + sourceAccountId;
+        String targetRedisKey = "balance::" + targetAccountId;
 
         Map<String, Object> sourceCache = Map.of(
                 "balance", newSourceBalance,
@@ -219,6 +219,7 @@ public class ProjectionUpdaterService {
 
         if (processedEventRepository.existsById(event.getEventId())) {
             log.warn("Idempotency triggered: AccountClosed event {} already processed. Skipping.", event.getEventId());
+            return;
         }
 
         UUID accountId = event.getAggregateId();
@@ -239,5 +240,40 @@ public class ProjectionUpdaterService {
         redisTemplate.delete(redisKey);
 
         log.info("Successfully projected AccountClosed for account {}. Cache evicted.", accountId);
+    }
+
+    @Transactional
+    public void processAccountCreated(AccountCreated event) {
+
+        if (processedEventRepository.existsById(event.getEventId())) {
+            log.warn("Idempotency triggered: AccountCreated event {} already processed. Skipping.", event.getEventId());
+            return;
+        }
+
+        AccountProjection projection = new AccountProjection();
+        projection.setId(event.getAggregateId());
+        projection.setOwnerId(event.getOwnerId());
+        projection.setBalance(BigDecimal.ZERO);
+        projection.setCurrency(event.getCurrency());
+        projection.setAccountType(event.getAccountType());
+        projection.setStatus("ACTIVE");
+        projection.setTransactionCount(0L);
+        projection.setLastUpdatedAt(event.getOccurredAt());
+
+        accountProjectionRepository.save(projection);
+        log.info("PostgreSQL projection created for account: {}", event.getAggregateId());
+
+        processedEventRepository.save(new ProcessedEvent(event.getEventId(), Instant.now()));
+
+        String redisKey = "balance::" + event.getAggregateId();
+
+        Map<String, Object> balanceCache = Map.of(
+                "balance", BigDecimal.ZERO,
+                "currency", projection.getCurrency(),
+                "lastUpdated", event.getOccurredAt()
+        );
+
+        redisTemplate.opsForValue().set(redisKey, balanceCache);
+        log.info("Redis cache initialized at {} for account: {}", redisKey, event.getAggregateId());
     }
 }
