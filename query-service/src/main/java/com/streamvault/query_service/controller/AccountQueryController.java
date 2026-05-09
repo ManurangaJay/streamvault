@@ -1,8 +1,13 @@
 package com.streamvault.query_service.controller;
 
+import com.streamvault.query_service.domain.TransactionProjection;
 import com.streamvault.query_service.dto.AccountSummaryResponse;
 import com.streamvault.query_service.service.AccountQueryService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,5 +43,18 @@ public class AccountQueryController {
 
         AccountSummaryResponse account = queryService.getAccountById(id, userId);
         return ResponseEntity.ok(account);
+    }
+
+    @GetMapping("/{id}/transactions")
+    public ResponseEntity<Page<TransactionProjection>> getAccountTransactions(
+            @PathVariable UUID id,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)Pageable pageable,
+            Principal principal
+            ) {
+        UUID userId = UUID.fromString(principal.getName());
+
+        Page<TransactionProjection> transactions = queryService.getAccountTransactions(id, userId, pageable);
+
+        return ResponseEntity.ok(transactions);
     }
 }

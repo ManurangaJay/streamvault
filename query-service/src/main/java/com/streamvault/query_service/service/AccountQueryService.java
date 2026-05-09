@@ -1,10 +1,14 @@
 package com.streamvault.query_service.service;
 
 import com.streamvault.query_service.domain.AccountProjection;
+import com.streamvault.query_service.domain.TransactionProjection;
 import com.streamvault.query_service.dto.AccountSummaryResponse;
 import com.streamvault.query_service.repository.AccountProjectionRepository;
+import com.streamvault.query_service.repository.TransactionProjectionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -22,6 +26,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AccountQueryService {
 
+    private final TransactionProjectionRepository transactionProjectionRepository;
     private final AccountProjectionRepository repository;
     private final RedisTemplate<String, Object> redisTemplate;
 
@@ -109,5 +114,18 @@ public class AccountQueryService {
                 account.getTransactionCount(),
                 lastUpdated
         );
+    }
+
+    public Page<TransactionProjection> getAccountTransactions(UUID accountId, UUID userId, Pageable pageable) {
+
+        AccountProjection account = repository.findById(accountId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found"));
+
+        if (!account.getOwnerId().equals(userId)) {
+            log.warn("Security Event: User {} attempted to access transaction history for account {}", userId, accountId);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found");
+        }
+
+        return transactionProjectionRepository.findByAccountId(accountId, pageable);
     }
 }
