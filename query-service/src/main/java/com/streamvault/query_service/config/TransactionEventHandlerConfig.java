@@ -25,7 +25,7 @@ public class TransactionEventHandlerConfig {
     private final ProjectionUpdaterService projectionUpdaterService;
 
     @Bean
-    public Consumer<Message<String>> transactionEvents() {
+    public Consumer<Message<String>> transactionEventHandler() {
         return message -> {
             try {
                 String payload = message.getPayload();

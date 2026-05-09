@@ -22,13 +22,11 @@ import java.util.function.Consumer;
 @RequiredArgsConstructor
 public class AccountEventHandlerConfig {
 
-    private final AccountProjectionRepository repository;
-    private final RedisTemplate<String, Object> redisTemplate;
     private final ObjectMapper objectMapper;
     private final ProjectionUpdaterService projectionUpdaterService;
 
     @Bean
-    public Consumer<Message<String>> accountEvents() {
+    public Consumer<Message<String>> accountEventHandler() {
         return message -> {
           try {
               String payload = message.getPayload();

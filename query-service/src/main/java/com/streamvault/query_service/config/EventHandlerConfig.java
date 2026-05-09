@@ -1,6 +1,5 @@
 package com.streamvault.query_service.config;
 
-import org.apache.kafka.clients.consumer.internals.Acknowledgements;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.support.Acknowledgment;
