@@ -9,6 +9,8 @@ import java.util.UUID;
 @Getter
 @Setter
 public class MoneyTransferred extends BaseDomainEvent{
+    private UUID sourceAccountId;
     private UUID targetAccountId;
     private BigDecimal amount;
+    private String description;
 }
