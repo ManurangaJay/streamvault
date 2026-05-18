@@ -38,6 +38,8 @@ spring:
       use-key-prefix: true
 
   cloud:
+    function:
+      definition: transactionEvents;accountEvents
     stream:
       kafka:
         binder:
