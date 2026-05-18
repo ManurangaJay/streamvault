@@ -110,7 +110,7 @@ public class ProjectionUpdaterService {
         transaction.setAmount(event.getAmount());
         transaction.setDirection("DEBIT");
         transaction.setBalanceAfter(newBalance);
-        transaction.setDirection("Withdrawal via Command API");
+        transaction.setDescription("Withdrawal via Command API");
         transaction.setCreatedAt(event.getOccurredAt());
         transaction.setCorrelationId(event.getCorrelationId());
 
@@ -137,7 +137,7 @@ public class ProjectionUpdaterService {
             return;
         }
 
-        UUID sourceAccountId = event.getAggregateId();
+        UUID sourceAccountId = event.getSourceAccountId();
         UUID targetAccountId = event.getTargetAccountId();
 
         AccountProjection sourceAccount = accountProjectionRepository.findById(sourceAccountId)
