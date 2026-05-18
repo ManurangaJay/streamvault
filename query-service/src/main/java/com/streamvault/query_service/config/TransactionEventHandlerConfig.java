@@ -25,31 +25,46 @@ public class TransactionEventHandlerConfig {
     private final ProjectionUpdaterService projectionUpdaterService;
 
     @Bean
-    public Consumer<Message<String>> transactionEventHandler() {
+    public Consumer<Message<String>> transactionEvents() {
         return message -> {
             try {
+                String eventType = message.getHeaders().get("eventType", String.class);
                 String payload = message.getPayload();
-                JsonNode rootNode = objectMapper.readTree(payload);
-                String eventType = rootNode.path("eventType").asText();
 
-                if ("MoneyDeposited".equals(eventType)) {
-                    MoneyDeposited event = objectMapper.readValue(payload, MoneyDeposited.class);
-                    projectionUpdaterService.processMoneyDeposited(event);
-                } else if ("MoneyWithdrawn".equals(eventType)) {
-                    MoneyWithdrawn event = objectMapper.readValue(payload, MoneyWithdrawn.class);
-                    projectionUpdaterService.processMoneyWithdrawn(event);
-                } else if ("MoneyTransferred".equals(eventType)) {
-                    MoneyTransferred event = objectMapper.readValue(payload, MoneyTransferred.class);
-                    projectionUpdaterService.processMoneyTransferred(event);
+                if (eventType == null) {
+                    log.warn("Received message without 'eventType' header. Payload: {}", payload);
+                    acknowledge(message);
+                    return;
                 }
 
-                Acknowledgment acknowledgment = message.getHeaders().get(KafkaHeaders.ACKNOWLEDGMENT, Acknowledgment.class);
-                if (acknowledgment != null) {
-                    acknowledgment.acknowledge();
+                switch (eventType) {
+                    case "MoneyDeposited" -> {
+                        MoneyDeposited event = objectMapper.readValue(payload, MoneyDeposited.class);
+                        projectionUpdaterService.processMoneyDeposited(event);
+                    }
+                    case "MoneyWithdrawn" -> {
+                        MoneyWithdrawn event = objectMapper.readValue(payload, MoneyWithdrawn.class);
+                        projectionUpdaterService.processMoneyWithdrawn(event);
+                    }
+                    case "MoneyTransferred" -> {
+                        MoneyTransferred event = objectMapper.readValue(payload, MoneyTransferred.class);
+                        projectionUpdaterService.processMoneyTransferred(event);
+                    }
+                    default -> log.warn("Unknown eventType received in header: {}", eventType);
                 }
+                acknowledge(message);
+
             } catch (Exception e) {
                 log.error("Failed to process transaction event. Offset not committed.", e);
+                throw new RuntimeException("Event processing failed", e);
             }
         };
+    }
+
+    private void acknowledge(Message<?> message) {
+        Acknowledgment acknowledgment = message.getHeaders().get(KafkaHeaders.ACKNOWLEDGMENT, Acknowledgment.class);
+        if (acknowledgment != null) {
+            acknowledgment.acknowledge();
+        }
     }
 }
