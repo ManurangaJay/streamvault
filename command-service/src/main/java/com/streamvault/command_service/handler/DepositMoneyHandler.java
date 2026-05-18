@@ -9,6 +9,8 @@ import com.streamvault.command_service.repository.AccountRepository;
 import com.streamvault.command_service.repository.DomainEventRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cloud.stream.function.StreamBridge;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -58,7 +60,13 @@ public class DepositMoneyHandler {
 
         domainEventRepository.save(eventRecord);
 
-        streamBridge.send("transactionEvents-out-0", event);
+        Message<MoneyDeposited> message = MessageBuilder
+                .withPayload(event)
+                        .setHeader("eventType", eventRecord.getEventType())
+                                .setHeader("correlationId", event.getCorrelationId())
+                                        .build();
+
+        streamBridge.send("transactionEvents-out-0", message);
     }
 
 }

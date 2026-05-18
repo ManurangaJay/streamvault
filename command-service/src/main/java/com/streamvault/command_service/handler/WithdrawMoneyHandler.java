@@ -12,6 +12,8 @@ import com.streamvault.command_service.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.stream.function.StreamBridge;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -98,6 +100,12 @@ public class WithdrawMoneyHandler {
                 .build();
 
         domainEventRepository.save(eventRecord);
-        streamBridge.send("transactionEvents-out-0", event);
+
+        Message<MoneyWithdrawn> message = MessageBuilder
+                .withPayload(event)
+                        .setHeader("eventType", eventRecord.getEventType())
+                                .setHeader("correlationId", event.getCorrelationId())
+                                        .build();
+        streamBridge.send("transactionEvents-out-0", message);
     }
 }

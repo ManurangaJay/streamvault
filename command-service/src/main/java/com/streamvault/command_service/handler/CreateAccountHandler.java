@@ -12,6 +12,8 @@ import com.streamvault.command_service.repository.DomainEventRepository;
 import com.streamvault.command_service.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cloud.stream.function.StreamBridge;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -78,7 +80,13 @@ public class CreateAccountHandler {
 
         domainEventRepository.save(eventRecord);
 
-        streamBridge.send("accountEvents-out-0", event);
+        Message<AccountCreated> message = MessageBuilder
+                .withPayload(event)
+                        .setHeader("eventType", eventRecord.getEventType())
+                                .setHeader("correlationId", event.getCorrelationId())
+                                        .build();
+
+        streamBridge.send("accountEvents-out-0", message);
 
         return account.getId();
     }

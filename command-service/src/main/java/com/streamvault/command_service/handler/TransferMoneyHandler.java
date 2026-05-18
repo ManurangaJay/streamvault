@@ -11,6 +11,8 @@ import com.streamvault.command_service.repository.DomainEventRepository;
 import com.streamvault.command_service.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cloud.stream.function.StreamBridge;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -121,8 +123,19 @@ public class TransferMoneyHandler {
         domainEventRepository.save(buildEventRecord(sourceEvent, "MoneyTransferred"));
         domainEventRepository.save(buildEventRecord(targetEvent, "MoneyTransferred"));
 
-        streamBridge.send("transactionEvents-out-0", sourceEvent);
-        streamBridge.send("transactionEvents-out-0", targetEvent);
+        Message<MoneyTransferred> sourceMessage = MessageBuilder
+                .withPayload(sourceEvent)
+                        .setHeader("eventType", "MoneyTransferred")
+                                .setHeader("correlationId", sourceEvent.getCorrelationId())
+                                        .build();
+        Message<MoneyTransferred> targetMessage = MessageBuilder
+                .withPayload(targetEvent)
+                        .setHeader("eventType", "MoneyTransferred")
+                                .setHeader("correlationId", targetEvent.getCorrelationId())
+                                        .build();
+
+        streamBridge.send("transactionEvents-out-0", sourceMessage);
+        streamBridge.send("transactionEvents-out-0", targetMessage);
     }
 
     private DomainEventRecord buildEventRecord(MoneyTransferred event, String eventType) {
