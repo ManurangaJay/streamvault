@@ -137,81 +137,58 @@ public class ProjectionUpdaterService {
             return;
         }
 
-        UUID sourceAccountId = event.getSourceAccountId();
-        UUID targetAccountId = event.getTargetAccountId();
+        UUID aggregateId = event.getAggregateId();
+        boolean isDebit = aggregateId.equals(event.getSourceAccountId());
 
-        AccountProjection sourceAccount = accountProjectionRepository.findById(sourceAccountId)
-                .orElseThrow(() -> new IllegalStateException("Source account not found: " + sourceAccountId));
+        AccountProjection account = accountProjectionRepository.findById(aggregateId)
+                .orElseThrow(() -> new IllegalStateException("Account not found: " + aggregateId));
 
-        AccountProjection targetAccount = accountProjectionRepository.findById(targetAccountId)
-                .orElseThrow(() -> new IllegalStateException("Target account not found: " + targetAccountId));
+        BigDecimal newBalance;
+        TransactionProjection transaction = new TransactionProjection();
+        transaction.setId(UUID.randomUUID());
+        transaction.setAccountId(aggregateId);
+        transaction.setEventType("MoneyTransferred");
+        transaction.setAmount(event.getAmount());
+        transaction.setCreatedAt(event.getOccurredAt());
+        transaction.setCorrelationId(event.getCorrelationId());
 
-        BigDecimal newSourceBalance = sourceAccount.getBalance().subtract(event.getAmount());
-        BigDecimal newTargetBalance = targetAccount.getBalance().add(event.getAmount());
-
-        if (newSourceBalance.compareTo(BigDecimal.ZERO) < 0) {
-            throw new IllegalStateException(
-                    "Projection Error: Transfer event " + event.getEventId() +
-                            "would cause a negative for source account " + sourceAccountId
-            );
+        if (isDebit) {
+            // Process the Source (Debit) Side
+            newBalance = account.getBalance().subtract(event.getAmount());
+            transaction.setDirection("DEBIT");
+            transaction.setBalanceAfter(newBalance);
+            transaction.setDescription("Transferred to: " + event.getTargetAccountId());
+        } else {
+            // Process the Target (Credit) Side
+            newBalance = account.getBalance().add(event.getAmount());
+            transaction.setDirection("CREDIT");
+            transaction.setBalanceAfter(newBalance);
+            transaction.setDescription("Transferred from: " + event.getSourceAccountId());
         }
 
-        sourceAccount.setBalance(newSourceBalance);
-        sourceAccount.setTransactionCount(sourceAccount.getTransactionCount() + 1);
-        sourceAccount.setLastUpdatedAt(event.getOccurredAt());
+        // Update Account Projection
+        account.setBalance(newBalance);
+        account.setTransactionCount(account.getTransactionCount() + 1);
+        account.setLastUpdatedAt(event.getOccurredAt());
+        accountProjectionRepository.save(account);
 
-        targetAccount.setBalance(newTargetBalance);
-        targetAccount.setTransactionCount(targetAccount.getTransactionCount() + 1);
-        targetAccount.setLastUpdatedAt(event.getOccurredAt());
+        // Save Transaction History
+        transactionProjectionRepository.save(transaction);
 
-        accountProjectionRepository.saveAll(List.of(sourceAccount, targetAccount));
-
-        TransactionProjection sourceTx = new TransactionProjection();
-        sourceTx.setId(UUID.randomUUID());
-        sourceTx.setAccountId(sourceAccountId);
-        sourceTx.setEventType("MoneyTransferred");
-        sourceTx.setAmount(event.getAmount());
-        sourceTx.setDirection("DEBIT");
-        sourceTx.setBalanceAfter(newSourceBalance);
-        sourceTx.setDescription("Transferred to: " + targetAccountId);
-        sourceTx.setCreatedAt(event.getOccurredAt());
-        sourceTx.setCorrelationId(event.getCorrelationId());
-
-        TransactionProjection targetTx = new TransactionProjection();
-        targetTx.setId(UUID.randomUUID());
-        targetTx.setAccountId(targetAccountId);
-        targetTx.setEventType("MoneyTransferred");
-        targetTx.setAmount(event.getAmount());
-        targetTx.setDirection("CREDIT");
-        targetTx.setBalanceAfter(newTargetBalance);
-        targetTx.setDescription("Transferred from: " + targetAccountId);
-        targetTx.setCreatedAt(event.getOccurredAt());
-        targetTx.setCorrelationId(event.getCorrelationId());
-
-        transactionProjectionRepository.saveAll(List.of(sourceTx, targetTx));
-
+        // 3. Mark Event as Processed (Idempotency)
         processedEventRepository.save(new ProcessedEvent(event.getEventId(), Instant.now()));
 
-        String sourceRedisKey = "balance::" + sourceAccountId;
-        String targetRedisKey = "balance::" + targetAccountId;
-
-        Map<String, Object> sourceCache = Map.of(
-                "balance", newSourceBalance,
-                "currency", sourceAccount.getCurrency(),
+        // Update Redis Cache
+        String redisKey = "balance::" + aggregateId;
+        Map<String, Object> cacheData = Map.of(
+                "balance", newBalance,
+                "currency", account.getCurrency(),
                 "lastUpdate", event.getOccurredAt()
         );
-        Map<String, Object> targetCache = Map.of(
-                "balance", newTargetBalance,
-                "currency", targetAccount.getCurrency(),
-                "lastUpdate", event.getOccurredAt()
-        );
+        redisTemplate.opsForValue().set(redisKey, cacheData);
 
-        redisTemplate.opsForValue().multiSet(Map.of(
-                sourceRedisKey, sourceCache,
-                targetRedisKey, targetCache
-        ));
-
-        log.info("Successfully projected MoneyTransferred. Source {}. Target {}", sourceAccountId, targetAccountId);
+        log.info("Successfully projected MoneyTransferred ({} side) for account {}. New balance: {}",
+                isDebit ? "Source" : "Target", aggregateId, newBalance);
     }
 
     @Transactional
