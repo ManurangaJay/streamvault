@@ -11,7 +11,7 @@ services:
       - "8081:8081"
     environment:
       - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/main_db
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/streamvault_command
       - SPRING_DATASOURCE_USERNAME=user
       - SPRING_DATASOURCE_PASSWORD=password
       - SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS=kafka:9092
@@ -42,7 +42,7 @@ services:
       - "8082:8082"
     environment:
       - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/main_db?currentSchema=streamvault_query
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/streamvault_query
       - SPRING_DATASOURCE_USERNAME=user
       - SPRING_DATASOURCE_PASSWORD=password
       - SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS=kafka:9092
