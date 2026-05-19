@@ -107,4 +107,61 @@ class ProjectionIntegrationTest {
                     assertThat(rawJson).contains("500");
                 });
     }
+
+    @Test
+    void shouldProcessDuplicateEventIdempotently() throws Exception {
+        // Create ONE single event representing a $300 deposit
+        UUID eventId = UUID.randomUUID();
+        MoneyDeposited event = new MoneyDeposited();
+        event.setEventId(eventId);
+        event.setAggregateId(accountId);
+        event.setAmount(new BigDecimal("300.00"));
+        event.setOccurredAt(Instant.now());
+        event.setCorrelationId(UUID.randomUUID());
+
+        String eventJson = objectMapper.writeValueAsString(event);
+
+        Message<String> message = MessageBuilder
+                .withPayload(eventJson)
+                .setHeader(KafkaHeaders.TOPIC, "transaction.events")
+                .setHeader("eventType", "MoneyDeposited")
+                .setHeader("correlationId", event.getCorrelationId().toString())
+                .build();
+
+        // Publish the message the first time
+        kafkaTemplate.send(message);
+
+        // Wait for the first message to be processed successfully
+        await()
+                .atMost(Duration.ofSeconds(10))
+                .pollInterval(Duration.ofMillis(200))
+                .untilAsserted(() -> {
+                    long txCount = transactionRepository.findAll().stream()
+                            .filter(tx -> tx.getAccountId().equals(accountId))
+                            .count();
+                    assertThat(txCount).isEqualTo(1L);
+                });
+
+        // Publish the EXACT SAME message a second time
+        kafkaTemplate.send(message);
+
+        // Give the consumer time to receive it, check the DB, and skip it.
+        Thread.sleep(2000);
+
+        // Verify the balance is still 300 (not 600)
+        AccountProjection updatedAccount = accountRepository.findById(accountId).orElseThrow();
+        assertThat(updatedAccount.getBalance()).isEqualByComparingTo("300.00");
+
+        // Verify there is still only 1 transaction row for this account, not 2
+        long finalTxCount = transactionRepository.findAll().stream()
+                .filter(tx -> tx.getAccountId().equals(accountId))
+                .count();
+        assertThat(finalTxCount).isEqualTo(1L);
+
+        // Verify the Redis cache wasn't overwritten with a phantom state
+        String redisKey = "balance::" + accountId;
+        String rawJson = stringRedisTemplate.opsForValue().get(redisKey);
+        assertThat(rawJson).isNotNull();
+        assertThat(rawJson).contains("300");
+    }
 }
