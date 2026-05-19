@@ -16,6 +16,6 @@ USER spring:spring
 # Copy the built jar from the builder stage
 COPY --from=builder /app/target/*.jar app.jar
 # Expose the application port
-EXPOSE 8081
+EXPOSE 8082
 # Run the application
 ENTRYPOINT ["java", "-jar", "app.jar"]

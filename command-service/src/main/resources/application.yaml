@@ -1,6 +1,9 @@
 # ===================================================================
 # BASE CONFIGURATION (Shared across all profiles)
 # ===================================================================
+server:
+  port: 8081
+
 spring:
   application:
     name: command-service
