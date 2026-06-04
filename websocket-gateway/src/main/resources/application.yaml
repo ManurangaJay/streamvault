@@ -1,0 +1,34 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: websocket-gateway
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+  cloud:
+    function:
+      definition: accountEventConsumer
+    stream:
+      kafka:
+        binder:
+          brokers: localhost:9092
+          auto-create-topics: false
+      bindings:
+        accountEventsConsumer-in-0:
+          destination: account.events
+          group: ws-gateway-group
+          content-type: application/jason
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
