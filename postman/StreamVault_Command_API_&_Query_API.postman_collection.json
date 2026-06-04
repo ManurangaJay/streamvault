@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "StreamVault Command API",
-    "description": "CQRS Command endpoints for the StreamVault Event Sourced Ledger.",
+    "name": "StreamVault API",
+    "description": "CQRS Command and Query endpoints for the StreamVault Event Sourced Ledger.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -20,8 +20,8 @@
               "raw": "{\n    \"fullName\": \"Test User\",\n    \"email\": \"test@streamvault.com\",\n    \"password\": \"securepassword123\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/auth/register",
-              "host": [ "{{baseUrl}}" ],
+              "raw": "{{commandBaseUrl}}/api/auth/register",
+              "host": [ "{{commandBaseUrl}}" ],
               "path": [ "api", "auth", "register" ]
             }
           }
@@ -53,8 +53,8 @@
               "raw": "{\n    \"email\": \"test@streamvault.com\",\n    \"password\": \"securepassword123\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/auth/login",
-              "host": [ "{{baseUrl}}" ],
+              "raw": "{{commandBaseUrl}}/api/auth/login",
+              "host": [ "{{commandBaseUrl}}" ],
               "path": [ "api", "auth", "login" ]
             }
           }
@@ -76,8 +76,8 @@
               "raw": "{\n    \"ownerId\": \"REPLACE_WITH_USER_UUID\",\n    \"accountType\": \"SAVINGS\",\n    \"currency\": \"USD\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/accounts",
-              "host": [ "{{baseUrl}}" ],
+              "raw": "{{commandBaseUrl}}/api/accounts",
+              "host": [ "{{commandBaseUrl}}" ],
               "path": [ "api", "accounts" ]
             }
           }
@@ -94,8 +94,8 @@
               "raw": "{\n    \"accountId\": \"REPLACE_WITH_ACCOUNT_UUID\",\n    \"amount\": 1500.00,\n    \"description\": \"Initial Salary Deposit\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/accounts/deposit",
-              "host": [ "{{baseUrl}}" ],
+              "raw": "{{commandBaseUrl}}/api/accounts/deposit",
+              "host": [ "{{commandBaseUrl}}" ],
               "path": [ "api", "accounts", "deposit" ]
             }
           }
@@ -112,8 +112,8 @@
               "raw": "{\n    \"accountId\": \"REPLACE_WITH_ACCOUNT_UUID\",\n    \"amount\": 200.00,\n    \"description\": \"ATM Withdrawal\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/accounts/withdraw",
-              "host": [ "{{baseUrl}}" ],
+              "raw": "{{commandBaseUrl}}/api/accounts/withdraw",
+              "host": [ "{{commandBaseUrl}}" ],
               "path": [ "api", "accounts", "withdraw" ]
             }
           }
@@ -130,8 +130,8 @@
               "raw": "{\n    \"sourceAccountId\": \"REPLACE_WITH_SOURCE_UUID\",\n    \"targetAccountId\": \"REPLACE_WITH_TARGET_UUID\",\n    \"amount\": 150.00,\n    \"description\": \"Rent Payment\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/accounts/transfer",
-              "host": [ "{{baseUrl}}" ],
+              "raw": "{{commandBaseUrl}}/api/accounts/transfer",
+              "host": [ "{{commandBaseUrl}}" ],
               "path": [ "api", "accounts", "transfer" ]
             }
           }
@@ -148,9 +148,82 @@
               "raw": "{\n    \"accountId\": \"REPLACE_WITH_ACCOUNT_UUID\",\n    \"reason\": \"No longer needed\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/accounts/close",
-              "host": [ "{{baseUrl}}" ],
+              "raw": "{{commandBaseUrl}}/api/accounts/close",
+              "host": [ "{{commandBaseUrl}}" ],
               "path": [ "api", "accounts", "close" ]
+            }
+          }
+        }
+      ],
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{jwt_token}}",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "3. Account Queries",
+      "item": [
+        {
+          "name": "Get User Accounts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{queryBaseUrl}}/api/accounts",
+              "host": [ "{{queryBaseUrl}}" ],
+              "path": [ "api", "accounts" ]
+            }
+          }
+        },
+        {
+          "name": "Get Account by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{queryBaseUrl}}/api/accounts/:id",
+              "host": [ "{{queryBaseUrl}}" ],
+              "path": [ "api", "accounts", ":id" ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "REPLACE_WITH_ACCOUNT_UUID"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Account Transactions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{queryBaseUrl}}/api/accounts/:id/transactions?page=0&size=20",
+              "host": [ "{{queryBaseUrl}}" ],
+              "path": [ "api", "accounts", ":id", "transactions" ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "REPLACE_WITH_ACCOUNT_UUID"
+                }
+              ]
             }
           }
         }
@@ -169,8 +242,13 @@
   ],
   "variable": [
     {
-      "key": "baseUrl",
-      "value": "http://localhost:8080",
+      "key": "commandBaseUrl",
+      "value": "http://localhost:8081",
+      "type": "string"
+    },
+    {
+      "key": "queryBaseUrl",
+      "value": "http://localhost:8082",
       "type": "string"
     },
     {
