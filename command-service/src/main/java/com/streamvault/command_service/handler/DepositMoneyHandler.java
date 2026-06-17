@@ -14,7 +14,9 @@ import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -40,6 +42,33 @@ public class DepositMoneyHandler {
                 .orElse(0L);
         Long nextVersion = currentVersion + 1;
 
+        List<DomainEventRecord> eventStream = domainEventRepository.findByAggregateIdOrderByEventVersionAsc(account.getId());
+
+        BigDecimal currentBalance = BigDecimal.ZERO;
+
+        for (DomainEventRecord record : eventStream) {
+            BigDecimal eventAmount = record.getEventData().has("amount")
+                    ? record.getEventData().get("amount").decimalValue()
+                    : BigDecimal.ZERO;
+
+            switch (record.getEventType()) {
+                case "MoneyDeposited":
+                    currentBalance = currentBalance.add(eventAmount);
+                    break;
+                case "MoneyWithdrawn":
+                    currentBalance = currentBalance.subtract(eventAmount);
+                    break;
+                case "MoneyTransferred":
+                    UUID eventSourceId = UUID.fromString(record.getEventData().get("sourceAccountId").asText());
+                    if (account.getId().equals(eventSourceId)) {
+                        currentBalance = currentBalance.subtract(eventAmount);
+                    } else {
+                        currentBalance = currentBalance.add(eventAmount);
+                    }
+                    break;
+            }
+        }
+
         MoneyDeposited event = MoneyDeposited.builder()
                 .eventId(UUID.randomUUID())
                 .aggregateId(account.getId())
@@ -47,6 +76,7 @@ public class DepositMoneyHandler {
                 .version(nextVersion)
                 .correlationId(command.correlationId())
                 .amount(command.amount())
+                .newBalance(currentBalance.add(command.amount()))
                 .build();
 
         DomainEventRecord eventRecord = DomainEventRecord.builder()

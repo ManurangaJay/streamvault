@@ -72,6 +72,14 @@ public class WithdrawMoneyHandler {
                 case "MoneyWithdrawn" :
                     currentBalance = currentBalance.subtract(eventAmount);
                     break;
+                case "MoneyTransferred":
+                    UUID eventSourceId = UUID.fromString(record.getEventData().get("sourceAccountId").asText());
+                    if (account.getId().equals(eventSourceId)) {
+                        currentBalance = currentBalance.subtract(eventAmount);
+                    } else {
+                        currentBalance = currentBalance.add(eventAmount);
+                    }
+                    break;
             }
         }
 
@@ -88,6 +96,7 @@ public class WithdrawMoneyHandler {
                 .version(nextVersion)
                 .correlationId(command.correlationId())
                 .amount(command.amount())
+                .newBalance(currentBalance.add(command.amount()))
                 .build();
 
         DomainEventRecord eventRecord = DomainEventRecord.builder()

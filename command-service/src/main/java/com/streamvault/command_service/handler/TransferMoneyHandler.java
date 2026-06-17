@@ -60,7 +60,7 @@ public class TransferMoneyHandler {
 
         List<DomainEventRecord> sourceEventStream = domainEventRepository.findByAggregateIdOrderByEventVersionAsc(sourceAccount.getId());
 
-        BigDecimal currentBalance = BigDecimal.ZERO;
+        BigDecimal sourceCurrentBalance = BigDecimal.ZERO;
         Long sourceCurrentVersion = 0L;
 
         for (DomainEventRecord record : sourceEventStream) {
@@ -71,28 +71,54 @@ public class TransferMoneyHandler {
 
             switch (record.getEventType()) {
                 case "MoneyDeposited":
-                    currentBalance = currentBalance.add(eventAmount);
+                    sourceCurrentBalance = sourceCurrentBalance.add(eventAmount);
                     break;
                 case "MoneyWithdrawn":
-                    currentBalance = currentBalance.subtract(eventAmount);
+                    sourceCurrentBalance = sourceCurrentBalance.subtract(eventAmount);
                     break;
                 case "MoneyTransferred":
                     UUID eventSourceId = UUID.fromString(record.getEventData().get("sourceAccountId").asText());
                     if (sourceAccount.getId().equals(eventSourceId)) {
-                        currentBalance = currentBalance.subtract(eventAmount);
+                        sourceCurrentBalance = sourceCurrentBalance.subtract(eventAmount);
                     } else {
-                        currentBalance = currentBalance.add(eventAmount);
+                        sourceCurrentBalance = sourceCurrentBalance.add(eventAmount);
                     }
                     break;
             }
         }
-        if (currentBalance.compareTo(command.amount()) < 0) {
-            throw new IllegalStateException("Insufficient funds. Current balance: " + currentBalance);
+        if (sourceCurrentBalance.compareTo(command.amount()) < 0) {
+            throw new IllegalStateException("Insufficient funds. Current balance: " + sourceCurrentBalance);
         }
 
-        Long targetCurrentVersion = domainEventRepository.findTopByAggregateIdOrderByEventVersionDesc(targetAccount.getId())
-                .map(DomainEventRecord :: getEventVersion)
-                .orElse(0L);
+        List<DomainEventRecord> targetEventStream = domainEventRepository.findByAggregateIdOrderByEventVersionAsc(targetAccount.getId());
+
+
+        BigDecimal targetCurrentBalance = BigDecimal.ZERO;
+        Long targetCurrentVersion = 0L;
+
+        for (DomainEventRecord record : targetEventStream) {
+            targetCurrentVersion = record.getEventVersion();
+            BigDecimal eventAmount = record.getEventData().has("amount")
+                    ? record.getEventData().get("amount").decimalValue()
+                    : BigDecimal.ZERO;
+
+            switch (record.getEventType()) {
+                case "MoneyDeposited":
+                    targetCurrentBalance = targetCurrentBalance.add(eventAmount);
+                    break;
+                case "MoneyWithdrawn":
+                    targetCurrentBalance = targetCurrentBalance.subtract(eventAmount);
+                    break;
+                case "MoneyTransferred":
+                    UUID eventSourceId = UUID.fromString(record.getEventData().get("sourceAccountId").asText());
+                    if (targetAccount.getId().equals(eventSourceId)) {
+                        targetCurrentBalance = targetCurrentBalance.subtract(eventAmount);
+                    } else {
+                        targetCurrentBalance = targetCurrentBalance.add(eventAmount);
+                    }
+                    break;
+            }
+        }
 
         Instant timestamp = Instant.now();
 
@@ -106,6 +132,7 @@ public class TransferMoneyHandler {
                 .targetAccountId(targetAccount.getId())
                 .amount(command.amount())
                 .description(command.description())
+                .newBalance(sourceCurrentBalance.subtract(command.amount()))
                 .build();
 
         MoneyTransferred targetEvent = MoneyTransferred.builder()
@@ -118,6 +145,7 @@ public class TransferMoneyHandler {
                 .targetAccountId(targetAccount.getId())
                 .amount(command.amount())
                 .description(command.description())
+                .newBalance(targetCurrentBalance.add(command.amount()))
                 .build();
 
         domainEventRepository.save(buildEventRecord(sourceEvent, "MoneyTransferred"));
