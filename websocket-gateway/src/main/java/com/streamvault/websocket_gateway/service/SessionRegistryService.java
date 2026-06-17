@@ -5,6 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.concurrent.TimeUnit;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -19,9 +21,11 @@ public class SessionRegistryService {
         String accountKey = SESSIONS_BY_ACCOUNT_PREFIX + accountId;
         String sessionKey = ACCOUNT_BY_SESSION_PREFIX + sessionId;
 
-        redisTemplate.opsForValue().set(accountKey, sessionId);
+        redisTemplate.opsForSet().add(accountKey, sessionId);
 
-        redisTemplate.opsForValue().set(sessionKey, accountId);
+        redisTemplate.expire(accountKey, 1, TimeUnit.HOURS);
+
+        redisTemplate.opsForValue().set(sessionKey, accountId, 1, TimeUnit.HOURS);
 
         log.info("Registered WS session [{}] for account [{}]", sessionId, accountId);
     }
