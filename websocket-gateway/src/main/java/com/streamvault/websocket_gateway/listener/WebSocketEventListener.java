@@ -1,5 +1,6 @@
 package com.streamvault.websocket_gateway.listener;
 
+import com.streamvault.websocket_gateway.sercurity.JwtService;
 import com.streamvault.websocket_gateway.service.SessionRegistryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,7 +17,7 @@ import org.springframework.web.socket.messaging.SessionSubscribeEvent;
 public class WebSocketEventListener {
 
     private final SessionRegistryService sessionRegistry;
-    // private final JwtService jwtService;
+     private final JwtService jwtService;
 
     @EventListener
     public void handleWebSocketConnectListener(SessionConnectEvent event) {
@@ -29,8 +30,7 @@ public class WebSocketEventListener {
 
             try {
                 // Validate token and extract the USER ID
-                // String userId = jwtService.extractUserId(token);
-                String userId = "extracted-user-uuid";
+                 String userId = jwtService.extractUserId(token);
 
                 // Store the userId in the WebSocket session attributes for future reference
                 if (accessor.getSessionAttributes() != null) {
@@ -52,7 +52,7 @@ public class WebSocketEventListener {
     public void handleSubscribeEvent(SessionSubscribeEvent event) {
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(event.getMessage());
         String sessionId = accessor.getSessionId();
-        String destination = accessor.getDestination(); // e.g., /topic/accounts/{accountId}/balance
+        String destination = accessor.getDestination();
 
         // Retrieve the authenticated user ID we saved during the connect phase
         String userId = (String) accessor.getSessionAttributes().get("userId");
@@ -62,8 +62,6 @@ public class WebSocketEventListener {
             String[] parts = destination.split("/");
             if (parts.length >= 4) {
                 String accountId = parts[3];
-
-
                 sessionRegistry.registerSession(accountId, sessionId);
             }
         }
