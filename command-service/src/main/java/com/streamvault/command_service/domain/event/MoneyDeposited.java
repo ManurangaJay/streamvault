@@ -9,4 +9,5 @@ import java.math.BigDecimal;
 @SuperBuilder
 public class MoneyDeposited extends BaseDomainEvent {
     private final BigDecimal amount;
+    private final BigDecimal newBalance;
 }

@@ -13,4 +13,5 @@ public class MoneyTransferred extends BaseDomainEvent {
     private final UUID targetAccountId;
     private final BigDecimal amount;
     private final String description;
+    private final BigDecimal newBalance;
 }
