@@ -17,7 +17,7 @@ import org.springframework.web.socket.messaging.SessionSubscribeEvent;
 public class WebSocketEventListener {
 
     private final SessionRegistryService sessionRegistry;
-     private final JwtService jwtService;
+    private final JwtService jwtService;
 
     @EventListener
     public void handleWebSocketConnectListener(SessionConnectEvent event) {
@@ -27,16 +27,13 @@ public class WebSocketEventListener {
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
-
             try {
                 // Validate token and extract the USER ID
                  String userId = jwtService.extractUserId(token);
-
                 // Store the userId in the WebSocket session attributes for future reference
                 if (accessor.getSessionAttributes() != null) {
                     accessor.getSessionAttributes().put("userId", userId);
                 }
-
                 log.info("WS connection authenticated for User [{}] on Session [{}]", userId, sessionId);
             } catch (Exception e) {
                 log.error("Failed to authenticate STOMP connection. Session: {}", sessionId);

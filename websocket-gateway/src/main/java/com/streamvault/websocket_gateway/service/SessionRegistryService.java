@@ -17,6 +17,7 @@ public class SessionRegistryService {
     private static final String SESSIONS_BY_ACCOUNT_PREFIX = "ws:sessions:";
     private static final String ACCOUNT_BY_SESSION_PREFIX = "ws:session:";
 
+
     public void registerSession(String accountId, String sessionId) {
         String accountKey = SESSIONS_BY_ACCOUNT_PREFIX + accountId;
         String sessionKey = ACCOUNT_BY_SESSION_PREFIX + sessionId;
