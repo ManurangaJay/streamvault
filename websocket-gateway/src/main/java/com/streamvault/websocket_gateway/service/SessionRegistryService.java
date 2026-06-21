@@ -5,6 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -47,5 +49,11 @@ public class SessionRegistryService {
         } else {
             log.warn("Attempted to unregister untracked WS session [{}]", sessionId);
         }
+    }
+
+    public Set<String> getActiveSessions(String accountId) {
+        String accountKey = SESSIONS_BY_ACCOUNT_PREFIX + accountId;
+        Set<String> sessions = redisTemplate.opsForSet().members(accountKey);
+        return sessions != null ? sessions : Collections.emptySet();
     }
 }
