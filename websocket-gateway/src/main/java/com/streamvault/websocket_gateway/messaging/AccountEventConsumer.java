@@ -43,14 +43,32 @@ public class AccountEventConsumer {
 
                 log.info("Found {} active session(s) for Account [{}]. Pushing update...", activeSessions.size(), accountId);
 
+                String direction = determineDirection(eventType);
+                BalanceUpdatedDTO updatePayload = new BalanceUpdatedDTO(
+                        envelope.newBalance(),
+                        envelope.occurredAt(),
+                        direction,
+                        envelope.amount()
+                );
+
                 String destination = String.format("/topic/accounts/%s/transactions", accountId);
-                messagingTemplate.convertAndSend(destination, envelope);
+                messagingTemplate.convertAndSend(destination, updatePayload);
 
             } catch (JsonProcessingException e) {
                 log.error("Failed to deserialize Kafka message payload: {}", payload, e);
             } catch (Exception e) {
                 log.error("Unexpected error processing account event", e);
             }
+        };
+    }
+
+    private String determineDirection(String eventType) {
+        if (eventType == null) return "UNKNOWN";
+
+        return switch (eventType) {
+            case "MoneyDeposited" -> "CREDIT";
+            case "MoneyWithdrawn" -> "DEBIT";
+            default -> "UNKNOWN";
         };
     }
 }
