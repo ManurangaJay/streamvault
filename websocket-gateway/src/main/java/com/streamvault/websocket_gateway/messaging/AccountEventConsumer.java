@@ -44,15 +44,32 @@ public class AccountEventConsumer {
                 log.info("Found {} active session(s) for Account [{}]. Pushing update...", activeSessions.size(), accountId);
 
                 String direction = determineDirection(eventType);
-                BalanceUpdatedDTO updatePayload = new BalanceUpdatedDTO(
+
+                BalanceUpdatedDTO balancePayload = new BalanceUpdatedDTO(
                         envelope.newBalance(),
                         envelope.occurredAt(),
                         direction,
                         envelope.amount()
                 );
 
-                String destination = String.format("/topic/accounts/%s/transactions", accountId);
-                messagingTemplate.convertAndSend(destination, updatePayload);
+                String balanceDestination = String.format("/topic/accounts/%s/balance", accountId);
+                messagingTemplate.convertAndSend(balanceDestination, balancePayload);
+
+                String displayDescription = envelope.description() != null
+                        ? envelope.description()
+                        : generateDefaultDescription(eventType);
+
+                TransactionNotificationDTO transactionPayload = new TransactionNotificationDTO(
+                        envelope.eventId(),
+                        eventType,
+                        envelope.amount(),
+                        direction,
+                        displayDescription
+                );
+
+                String transactionDestination = String.format("/topic/accounts/%s/transactions", accountId);
+
+                messagingTemplate.convertAndSend(transactionDestination, transactionPayload);
 
             } catch (JsonProcessingException e) {
                 log.error("Failed to deserialize Kafka message payload: {}", payload, e);
@@ -70,5 +87,17 @@ public class AccountEventConsumer {
             case "MoneyWithdrawn" -> "DEBIT";
             default -> "UNKNOWN";
         };
+    }
+
+    private String generateDefaultDescription(String eventType) {
+        if (eventType == null) return "System Transaction";
+
+        return switch (eventType) {
+            case "MoneyDeposited" -> "Cash Deposit";
+            case "MoneyWithdrawn" -> "Cash withdrawal";
+            case "MoneyTransferred" -> "Fund Transfer";
+            case "AccountCreated" -> "Initial Account Opening";
+            default -> "Ledger Update";
+        }
     }
 }

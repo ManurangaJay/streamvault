@@ -14,5 +14,6 @@ public record EventEnvelope (
         String occurredAt,
         Integer version,
         BigDecimal newBalance,
-        BigDecimal amount
+        BigDecimal amount,
+        String description
 ) {}
