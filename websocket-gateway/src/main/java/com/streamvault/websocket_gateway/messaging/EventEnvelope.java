@@ -1,8 +1,10 @@
 package com.streamvault.websocket_gateway.messaging;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.math.BigDecimal;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public record EventEnvelope (
         String eventId,
         String eventType,
@@ -11,5 +13,6 @@ public record EventEnvelope (
         String correlationId,
         String occurredAt,
         Integer version,
-        BigDecimal newBalance
+        BigDecimal newBalance,
+        BigDecimal amount
 ) {}
