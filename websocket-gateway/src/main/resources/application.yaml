@@ -12,7 +12,7 @@ spring:
 
   cloud:
     function:
-      definition: accountEventConsumer
+      definition: accountEventConsumer;alertEventsConsumer
     stream:
       kafka:
         binder:
@@ -23,6 +23,11 @@ spring:
           destination: account.events
           group: ws-gateway-group
           content-type: application/jason
+          
+        alertEventsConsumer-in-0:
+          destination: alert.events
+          group: ws-gateway-group
+          content-type: application/json
 
 management:
   endpoints:
