@@ -98,6 +98,6 @@ public class AccountEventConsumer {
             case "MoneyTransferred" -> "Fund Transfer";
             case "AccountCreated" -> "Initial Account Opening";
             default -> "Ledger Update";
-        }
+        };
     }
 }
