@@ -12,19 +12,19 @@ spring:
 
   cloud:
     function:
-      definition: accountEventConsumer;alertEventsConsumer
+      definition: accountEventConsumer;alertEventConsumer
     stream:
       kafka:
         binder:
           brokers: localhost:9092
           auto-create-topics: false
       bindings:
-        accountEventsConsumer-in-0:
+        accountEventConsumer-in-0:
           destination: account.events
           group: ws-gateway-group
-          content-type: application/jason
+          content-type: application/json
           
-        alertEventsConsumer-in-0:
+        alertEventConsumer-in-0:
           destination: alert.events
           group: ws-gateway-group
           content-type: application/json
