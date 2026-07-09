@@ -1,13 +1,18 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import Cookies from "js-cookie";
 
 interface AuthState {
   token: string | null;
   isAuthenticated: boolean;
 }
 
+// Check for the cookie as soon as the file is evaluated
+const savedToken = Cookies.get("streamvault_jwt") || null;
+
+// Initialize Redux with the token if it exists
 const initialState: AuthState = {
-  token: null,
-  isAuthenticated: false,
+  token: savedToken,
+  isAuthenticated: !!savedToken, // true if savedToken is a string, false if null
 };
 
 const authSlice = createSlice({
@@ -22,7 +27,7 @@ const authSlice = createSlice({
       state.token = null;
       state.isAuthenticated = false;
       // Clear the cookie on logout
-      document.cookie = "streamvault_jwt=; Max-Age=0; path=/;";
+      Cookies.remove("streamvault_jwt");
     },
   },
 });
