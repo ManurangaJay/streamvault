@@ -9,7 +9,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -27,7 +26,7 @@ public class AccountQueryController {
     private final AccountQueryService queryService;
 
     @GetMapping
-    public ResponseEntity<List<AccountSummaryResponse>> getUserAccounts(@AuthenticationPrincipal Principal principal) {
+    public ResponseEntity<List<AccountSummaryResponse>> getUserAccounts(Principal principal) {
         UUID userId = UUID.fromString(principal.getName());
 
         List<AccountSummaryResponse> accounts = queryService.getUserAccounts(userId);
