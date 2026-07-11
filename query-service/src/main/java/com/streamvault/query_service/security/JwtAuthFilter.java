@@ -35,8 +35,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
 
         final String jwt = authHeader.substring(7);
+        var currentAuth = SecurityContextHolder.getContext().getAuthentication();
 
-        if (jwtUtil.isTokenValid(jwt) && SecurityContextHolder.getContext().getAuthentication() == null) {
+        if (jwtUtil.isTokenValid(jwt) && (currentAuth == null || currentAuth instanceof org.springframework.security.authentication.AnonymousAuthenticationToken)) {
             String userId = jwtUtil.extractUserId(jwt);
 
             UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(userId, null, Collections.emptyList());
