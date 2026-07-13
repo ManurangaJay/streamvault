@@ -39,15 +39,6 @@ public class CreateAccountHandler {
         User owner = userRepository.findById(command.ownerId())
                 .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + command.ownerId()));
 
-        String currentUserEmail = (String) Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getPrincipal();
-
-        User currentUser = userRepository.findByEmail(currentUserEmail)
-                .orElseThrow(() -> new IllegalStateException("Authenticated user not found in database."));
-
-        if (!owner.getId().equals(currentUser.getId())) {
-            throw new AccessDeniedException("You are not authorized to create account for this user");
-        }
-
         Account account = Account.builder()
                 .id(UUID.randomUUID())
                 .ownerId(owner.getId())

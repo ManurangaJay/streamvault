@@ -1,7 +1,10 @@
 package com.streamvault.command_service.controller;
 
+import com.streamvault.command_service.CreateAccountRequest;
 import com.streamvault.command_service.domain.command.*;
+import com.streamvault.command_service.domain.entity.User;
 import com.streamvault.command_service.handler.*;
+import com.streamvault.command_service.repository.UserRepository;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -12,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.lang.reflect.MalformedParameterizedTypeException;
+import java.security.Principal;
 import java.util.Map;
 import java.util.UUID;
 
@@ -25,9 +29,22 @@ public class AccountController {
     private final WithdrawMoneyHandler withdrawMoneyHandler;
     private final TransferMoneyHandler transferMoneyHandler;
     private final CloseAccountHandler closeAccountHandler;
+    private final UserRepository userRepository;
 
     @PostMapping
-    public ResponseEntity<Map<String, UUID>> createAccount(@Valid @RequestBody CreateAccountCommand command) {
+    public ResponseEntity<Map<String, UUID>> createAccount(@Valid @RequestBody CreateAccountRequest request, Principal principal) {
+        String authenticatedEmail = principal.getName();
+
+        User currentUser = userRepository.findByEmail(authenticatedEmail)
+                .orElseThrow(() -> new IllegalStateException("Authenticated user not found in the database."));
+        
+        CreateAccountCommand command = new CreateAccountCommand(
+                currentUser.getId(),
+                request.accountType(),
+                request.currency(),
+                request.correlationId()
+        );
+
         UUID accountId = createAccountHandler.handle(command);
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("accountId", accountId));
     }
